@@ -25,7 +25,7 @@ Status: ✅ built in the web version · 🔜 planned for native
   - Images: reads all text in the image, writes a 1–3 sentence description, finds the source, adds up to 18 keywords in English, Spanish and German.
   - Links: description and keywords based on the URL, title and notes (Claude can't open the page).
 - 🔜 Native: on-device text reading (ML Kit) so indexing works offline and for free; Claude stays optional for keywords.
-- 🔜 Native: Android share target ("Share → Facts" from any app or browser).
+- ✅ Android share target ("Share → Facts", v1.1.0): one or several images open "Add image" with them loaded (shared text goes into notes, subject into the title); a shared link opens "Add link" with the URL and title filled in.
 
 ## 3. Viewing
 - ✅ Full image (double tap to zoom), title, source, notes, description, keywords and image text.
@@ -63,5 +63,4 @@ Status: ✅ built in the web version · 🔜 planned for native
 - ✅ Back button closes the top screen, then clears the search, then minimizes the app (so it reopens instantly).
 - ✅ Own icon, dark launch screen, edge-to-edge safe areas.
 - 🔜 On-device text reading (ML Kit) and Claude/API keywords.
-- 🔜 Share target ("Share → Facts").
 - 🔜 Cloud sync for the Android app.

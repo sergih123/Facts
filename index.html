@@ -187,7 +187,7 @@ const APP_VERSION = '__APP_VERSION__'.indexOf('__')===0 ? 'web' : '__APP_VERSION
 const CAP = window.Capacitor;
 const NATIVE = !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform());
 const P = {};
-if(NATIVE && CAP.registerPlugin){ for(const n of ['App','Keyboard','Filesystem','Share']){ try{ P[n]=CAP.registerPlugin(n); }catch(e){} } }
+if(NATIVE && CAP.registerPlugin){ for(const n of ['App','Keyboard','Filesystem','Share','ShareIn']){ try{ P[n]=CAP.registerPlugin(n); }catch(e){} } }
 function showKeyboard(){ try{ q.focus({preventScroll:true}); }catch(e){} if(NATIVE && P.Keyboard){ setTimeout(()=>{ try{ P.Keyboard.show().catch(()=>{}); }catch(e){} }, 150); } }
 const q = $('q');
 // Focus search immediately (before anything else loads).
@@ -906,6 +906,40 @@ async function addExamples(){
   indexItem(link); items.set(link.id, link); await idbPut(link);
   render(); pump();
 }
+/* ---------------- "Share -> Facts" (Android) ---------------- */
+async function handleShare(d){
+  if(!d) return;
+  for(const id of ['confirm','cmp','pick']) $(id).classList.remove('on');
+  if($('viewer').classList.contains('on')) closeViewer();
+  if($('sheet').classList.contains('on')) closeSheet();
+  const files=[];
+  for(const f of (d.files||[])){
+    if(f.mime && !/^image\//.test(f.mime)) continue;
+    try{
+      const r = await fetch(CAP.convertFileSrc('file://'+f.path));
+      const b = await r.blob();
+      files.push(new File([b], f.path.split('/').pop(), {type: f.mime || b.type || 'image/jpeg'}));
+    }catch(e){}
+  }
+  const text=(d.text||'').trim(), subject=(d.subject||'').trim();
+  if(files.length){
+    openAdd(files);
+    if(text) $('fNote').value = text;
+    if(subject) { $('fTitle').value = subject; validate(); }
+    return;
+  }
+  const m = text.match(/https?:\/\/[^\s<>"']+/i);
+  if(m){
+    openLink(m[0]);
+    let title = subject || text.replace(m[0],'').replace(/\s+/g,' ').trim();
+    title = title.replace(/^["'“”]+|["'“”]+$/g,'').trim();
+    if(title){ $('fTitle').value = title.slice(0,160); validate(); }
+    return;
+  }
+  if(text){ toast('Facts can save images and links. Paste the text into a note instead.', 4000); return; }
+  toast('Nothing to add from that share', 3000);
+}
+
 /* ---------------- back handling ---------------- */
 function closeTop(){
   if($('confirm').classList.contains('on')){ closeConfirm(); return true; }
@@ -1013,6 +1047,12 @@ $('importFile').onchange = async e=>{
         P.App.minimizeApp().catch(()=>{});
       });
       P.App.addListener('resume', ()=>{ if(!anyOverlay()) showKeyboard(); });
+    }catch(e){}
+  }
+  if(NATIVE && P.ShareIn){
+    try{
+      P.ShareIn.addListener('shared', d=>handleShare(d));
+      P.ShareIn.takePending().then(r=>{ if(r && r.has) handleShare(r.share); }).catch(()=>{});
     }catch(e){}
   }
   connect();

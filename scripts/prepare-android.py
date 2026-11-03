@@ -16,7 +16,35 @@ s = re.sub(r'\s+android:windowSoftInputMode="[^"]*"', '', s)
 s = s.replace('android:name=".MainActivity"',
               'android:name=".MainActivity"\n            android:windowSoftInputMode="adjustResize|stateAlwaysVisible"', 1)
 assert 'stateAlwaysVisible' in s, 'manifest patch failed'
+# "Share -> Facts": images (one or several) and text/links.
+if 'android.intent.action.SEND' not in s:
+    share_filters = '''
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+'''
+    i = s.index('</activity>')
+    s = s[:i] + share_filters + '\n        ' + s[i:]
+    assert s.count('android.intent.action.SEND') == 3, 'share filter patch failed'
 open(mf, 'w').write(s)
+
+# Native code: MainActivity + ShareIn plugin (share target).
+java_dir = f'{APP}/src/main/java/io/github/sergih123/facts'
+assert os.path.isfile(f'{java_dir}/MainActivity.java'), 'MainActivity not where expected (app id changed?)'
+for src in glob.glob('native/java/*.java'):
+    shutil.copyfile(src, os.path.join(java_dir, os.path.basename(src)))
 
 # 2. Icons, colors, splash. Remove the stock Capacitor splash images first.
 for f in glob.glob(f'{RES}/drawable*/splash.png'):
