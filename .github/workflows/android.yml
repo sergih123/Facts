@@ -4,7 +4,7 @@ name: Android release
 # "Run workflow" (manual) builds a test APK you can download from the run page.
 on:
   push:
-    tags: ['v*']
+    tags: ['v*', 'ci-test-*']
   workflow_dispatch:
 
 permissions:
@@ -34,6 +34,7 @@ jobs:
             # v1.2.3 -> 10203. Always grows with the version, so updates install over the old app.
             CODE=$(( BASH_REMATCH[1]*10000 + BASH_REMATCH[2]*100 + BASH_REMATCH[3] ))
             NAME="${TAG#v}"
+            echo "FACTS_RELEASE=1" >> "$GITHUB_ENV"
           else
             CODE=1; NAME="test-${GITHUB_RUN_NUMBER}"
           fi
@@ -51,24 +52,29 @@ jobs:
         env:
           FACTS_KEYSTORE_PASSWORD: ${{ secrets.FACTS_KEYSTORE_PASSWORD }}
         run: |
-          if [ -z "$FACTS_KEYSTORE_PASSWORD" ]; then
-            echo "::error::Missing repository secret FACTS_KEYSTORE_PASSWORD (Settings > Secrets and variables > Actions)."
-            exit 1
-          fi
           cd android
           chmod +x gradlew
+          if [ -z "$FACTS_KEYSTORE_PASSWORD" ]; then
+            # No key yet: build a debug APK only to check that everything compiles. Never released.
+            ./gradlew assembleDebug --no-daemon --stacktrace
+            cp app/build/outputs/apk/debug/app-debug.apk "../Facts-TEST-ONLY-${FACTS_VERSION_NAME}.apk"
+            echo "::error::Missing repository secret FACTS_KEYSTORE_PASSWORD (Settings > Secrets and variables > Actions). Built a test-only debug APK."
+            exit 1
+          fi
           ./gradlew assembleRelease --no-daemon --stacktrace
           cd ..
           cp android/app/build/outputs/apk/release/app-release.apk "Facts-${FACTS_VERSION_NAME}.apk"
           ls -la Facts-*.apk
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
+          if-no-files-found: ignore
           name: Facts-${{ env.FACTS_VERSION_NAME }}
           path: Facts-*.apk
 
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: env.FACTS_RELEASE == '1'
         uses: softprops/action-gh-release@v2
         with:
           files: Facts-*.apk
