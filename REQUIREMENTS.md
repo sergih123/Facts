@@ -58,7 +58,7 @@ Status: ✅ built in the web version · 🔜 planned for native
 - ✅ Four example charts with made-up numbers (marked SAMPLE DATA) and one example link, added on first open of the web version only (never in the Android app). Flagged `example: true`.
 
 ## 7. Android app
-- ✅ Capacitor wrapper around the same `index.html`, built on GitHub Actions and published as a GitHub release for tags `vX.Y.Z`.
+- ✅ Capacitor wrapper around the same `index.html`, built on GitHub Actions and published as GitHub release `vX.Y.Z` whenever the `version` in package.json is new (bump it and push to release an update). v1.0.0 released 2026-11-03.
 - ✅ Updates keep your data: fixed app id `io.github.sergih123.facts`, one release key (`signing/`, password in a repo secret), versionCode derived from the version.
 - ✅ Back button closes the top screen, then clears the search, then minimizes the app (so it reopens instantly).
 - ✅ Own icon, dark launch screen, edge-to-edge safe areas.
