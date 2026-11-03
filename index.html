@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <meta name="theme-color" content="#0e1013">
 <title>Facts</title>
 <style>
@@ -11,7 +11,8 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 body{min-height:100vh}
-header{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 12px 6px}
+:root{--sat:max(env(safe-area-inset-top,0px),var(--safe-area-inset-top,0px));--sab:max(env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px))}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(10px + var(--sat)) 12px 6px}
 .search{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:0 10px 0 14px;height:52px}
 .search:focus-within{border-color:var(--acc)}
 .search svg{flex:none;opacity:.6}
@@ -34,10 +35,12 @@ mark{background:var(--mark);color:inherit;border-radius:3px;padding:0 1px}
 #empty b{color:var(--text)}
 #empty .btn{margin-top:16px}
 .lnk{background:none;border:0;color:var(--acc);font:inherit;font-size:12px;padding:0;margin-left:8px}
-#add{position:fixed;right:18px;bottom:22px;width:62px;height:62px;border-radius:20px;border:0;background:var(--acc);color:#04121f;font-size:34px;line-height:1;box-shadow:0 6px 20px #0006;z-index:6}
+#add{position:fixed;right:18px;bottom:calc(22px + var(--sab));width:62px;height:62px;border-radius:20px;border:0;background:var(--acc);color:#04121f;font-size:34px;line-height:1;box-shadow:0 6px 20px #0006;z-index:6}
 .overlay{position:fixed;inset:0;z-index:20;background:var(--bg);display:none;flex-direction:column}
 .overlay.on{display:flex}
-.bar{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:6px;padding:calc(8px + var(--sat)) 10px 8px;border-bottom:1px solid var(--line)}
+#menuBtn{border:0;background:none;color:var(--mute);font-size:20px;width:36px;height:36px;border-radius:50%}
+#confirm .box{padding-bottom:calc(18px + var(--sab))}
 .bar .sp{flex:1}
 .btn{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:10px;padding:9px 13px;font:inherit;font-size:14px}
 .btn.pri{background:var(--acc);border-color:var(--acc);color:#04121f;font-weight:600}
@@ -77,7 +80,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.45 ui-monospace,Menlo
 .linktile .lk{font-size:11px;opacity:.75}
 #vlink{display:none;padding:22px 16px;background:linear-gradient(135deg,#2b4a6b,#1c2a3a);color:#dbe9f7}
 #vlink a{color:#fff;font-size:16px;font-weight:600;word-break:break-all}
-#addLink{position:fixed;right:90px;bottom:28px;width:50px;height:50px;border-radius:16px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:20px;z-index:6;box-shadow:0 4px 14px #0005}
+#addLink{position:fixed;right:90px;bottom:calc(28px + var(--sab));width:50px;height:50px;border-radius:16px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:20px;z-index:6;box-shadow:0 4px 14px #0005}
 .btn:disabled{opacity:.4}
 .req{color:var(--acc)}
 .big{max-height:38vh;width:auto;max-width:100%;border-radius:10px;border:1px solid var(--line);background:#fff;align-self:center}
@@ -114,6 +117,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.45 ui-monospace,Menlo
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
     <input id="q" type="search" autofocus enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search your facts…" aria-label="Search">
     <button id="clear" aria-label="Clear">×</button>
+    <button id="menuBtn" aria-label="Menu">⋮</button>
   </div>
   <div id="status"><span id="count"></span><span id="sync"></span></div>
 </header>
@@ -122,6 +126,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.45 ui-monospace,Menlo
 <button id="addLink" aria-label="Add a link">🔗</button>
 <button id="add" aria-label="Add images">+</button>
 <input type="file" id="file" accept="image/*" multiple hidden>
+<input type="file" id="importFile" accept=".json,application/json" hidden>
 
 <!-- Add / edit sheet -->
 <div class="overlay" id="sheet">
@@ -178,6 +183,12 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.45 ui-monospace,Menlo
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
+const APP_VERSION = '__APP_VERSION__'.indexOf('__')===0 ? 'web' : '__APP_VERSION__';
+const CAP = window.Capacitor;
+const NATIVE = !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform());
+const P = {};
+if(NATIVE && CAP.registerPlugin){ for(const n of ['App','Keyboard','Filesystem','Share']){ try{ P[n]=CAP.registerPlugin(n); }catch(e){} } }
+function showKeyboard(){ try{ q.focus({preventScroll:true}); }catch(e){} if(NATIVE && P.Keyboard){ setTimeout(()=>{ try{ P.Keyboard.show().catch(()=>{}); }catch(e){} }, 150); } }
 const q = $('q');
 // Focus search immediately (before anything else loads).
 try { q.focus({preventScroll:true}); } catch(e) {}
@@ -340,7 +351,7 @@ function setSync(msg){ $('sync').textContent = msg; }
 q.addEventListener('input', render);
 q.addEventListener('keydown', e=>{ if(e.key==='Enter'){ q.blur(); } });
 $('clear').onclick = ()=>{ q.value=''; render(); q.focus(); };
-document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && !anyOverlay()){ try{ q.focus({preventScroll:true}); q.select(); }catch(e){} } });
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && !anyOverlay()){ try{ q.select(); }catch(e){} showKeyboard(); } });
 const anyOverlay = () => $('cmp').classList.contains('on') || $('pick').classList.contains('on') || $('sheet').classList.contains('on') || $('viewer').classList.contains('on') || $('confirm').classList.contains('on');
 
 /* ---------------- images ---------------- */
@@ -870,7 +881,7 @@ const EXAMPLES = [
 // TEMP for testing: seed example items once. Remove before production (search "example").
 let seeding=false;
 function maybeSeed(){
-  if(seeding) return;
+  if(seeding || NATIVE) return;
   try{ if(localStorage.getItem('seeded')==='1') return; }catch(e){}
   if([...items.values()].some(i=>i.example)) { try{ localStorage.setItem('seeded','1'); }catch(e){} return; }
   seeding=true; try{ localStorage.setItem('seeded','1'); }catch(e){}
@@ -895,13 +906,115 @@ async function addExamples(){
   indexItem(link); items.set(link.id, link); await idbPut(link);
   render(); pump();
 }
+/* ---------------- back handling ---------------- */
+function closeTop(){
+  if($('confirm').classList.contains('on')){ closeConfirm(); return true; }
+  if($('cmp').classList.contains('on')){ $('cmp').classList.remove('on'); return true; }
+  if($('pick').classList.contains('on')){ $('pick').classList.remove('on'); return true; }
+  if($('sheet').classList.contains('on')){ $('sheetCancel').click(); return true; }
+  if($('viewer').classList.contains('on')){ closeViewer(); if(NATIVE) showKeyboard(); return true; }
+  return false;
+}
+
+/* ---------------- menu: backup export / import ---------------- */
+$('menuBtn').onclick = ()=>{
+  const box=$('confirmBox'); box.replaceChildren();
+  const mk=(l,c,f)=>{ const b=document.createElement('button'); b.className='btn '+c; b.textContent=l; b.onclick=f; box.append(b); return b; };
+  const real=[...items.values()].filter(i=>!i.example).length;
+  mk(`Export backup (${real} item${real===1?'':'s'})`,'',()=>{ closeConfirm(); exportBackup(); });
+  mk('Import backup','',()=>{ closeConfirm(); $('importFile').click(); });
+  mk('Close','',closeConfirm);
+  const v=document.createElement('div'); v.className='hint'; v.style.textAlign='center'; v.textContent='Facts '+APP_VERSION+(NATIVE?' · Android':''); box.append(v);
+  $('confirm').classList.add('on'); q.blur();
+};
+function blobToDataUrl(b){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>rej(r.error); r.readAsDataURL(b); }); }
+async function imgData(it, kind){
+  let b = kind==='thumb' ? it.thumbBlob : it.imgBlob;
+  const aid = kind==='thumb' ? it.thumbId : it.imgId;
+  if(!b && aid){ try{ const r=await fetch('/_blob/'+aid); if(r.ok) b=await r.blob(); }catch(e){} }
+  return b ? await blobToDataUrl(b) : '';
+}
+function dataUrlToBlob(u){
+  const m=/^data:([^;,]+)?(;base64)?,(.*)$/s.exec(u||''); if(!m) return null;
+  const bin = m[2] ? atob(m[3]) : decodeURIComponent(m[3]);
+  const a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i);
+  return new Blob([a],{type:m[1]||'image/jpeg'});
+}
+let exporting=false;
+async function exportBackup(){
+  if(exporting) return; exporting=true;
+  try{
+    const list=[...items.values()].filter(i=>!i.example).sort((a,b)=>(a.created||0)-(b.created||0));
+    if(!list.length){ toast('Nothing to export yet'); return; }
+    toast('Preparing backup…', 60000);
+    const parts=['{"app":"facts","format":1,"exported":'+Date.now()+',"items":['];
+    let i=0;
+    for(const it of list){
+      const rec={ id:it.id, ...serialize(it) }; delete rec.imgId; delete rec.thumbId; delete rec.example;
+      if(it.kind!=='link'){ rec.img=await imgData(it,'img'); rec.thumb=await imgData(it,'thumb'); }
+      parts.push((i++?',':'')+JSON.stringify(rec));
+    }
+    parts.push(']}');
+    const d=new Date(); const pad=n=>String(n).padStart(2,'0');
+    const name=`facts-backup-${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.json`;
+    if(NATIVE && P.Filesystem && P.Share){
+      await P.Filesystem.writeFile({path:name, directory:'CACHE', data:parts[0], encoding:'utf8'});
+      for(let k=1;k<parts.length;k++) await P.Filesystem.appendFile({path:name, directory:'CACHE', data:parts[k], encoding:'utf8'});
+      const {uri}=await P.Filesystem.getUri({path:name, directory:'CACHE'});
+      $('toast').classList.remove('on');
+      await P.Share.share({title:'Facts backup', text:`Facts backup (${list.length} items)`, files:[uri], dialogTitle:'Save backup to…'});
+      return;
+    }
+    const dl = window.claude && claude.use ? await claude.use('downloads').catch(()=>null) : null;
+    const blob=new Blob(parts,{type:'application/json'});
+    if(dl){ await dl.save({filename:name, data:blob}); toast('Backup saved'); return; }
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.append(a); a.click(); a.remove(); toast('Backup saved');
+  }catch(e){
+    if(e && (e.code==='declined' || /cancel/i.test(e.message||e.errorMessage||''))) $('toast').classList.remove('on');
+    else toast('Export failed: '+((e && (e.message||e.code))||'unknown error'), 4000);
+  } finally { exporting=false; }
+}
+$('importFile').onchange = async e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  try{
+    toast('Importing…', 60000);
+    const data=JSON.parse(await f.text());
+    if(!data || data.app!=='facts' || !Array.isArray(data.items)) throw new Error('Not a Facts backup file');
+    let added=0, skipped=0;
+    for(const r of data.items){
+      if(!r || !r.id || items.has(r.id)){ skipped++; continue; }
+      const it={ ...r, keywords:Array.isArray(r.keywords)?r.keywords.map(String):[], sync:'pending', imgId:null, thumbId:null };
+      delete it.img; delete it.thumb;
+      if(r.img) it.imgBlob=dataUrlToBlob(r.img);
+      if(r.thumb) it.thumbBlob=dataUrlToBlob(r.thumb);
+      if(it.kind!=='link' && !it.imgBlob && !it.thumbBlob){ skipped++; continue; }
+      if(it.ai==='pending') it.ai='off';
+      indexItem(it); items.set(it.id,it); await idbPut(it); added++;
+    }
+    render(); updateSyncLabel();
+    toast(`Imported ${added}`+(skipped?` · ${skipped} already there`:''), 3500);
+    pump();
+  }catch(err){ toast('Import failed: '+(err.message||err), 4000); }
+};
+
 /* ---------------- boot ---------------- */
 (async()=>{
   idb = await openIDB();
   for(const rec of await idbAll()){ indexItem(rec); items.set(rec.id, rec); }
   render(); updateSyncLabel();
   if(location.hash==='#view'){ try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){} }
-  focusSearch();
+  showKeyboard();
+  try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
+  if(NATIVE && P.App){
+    try{
+      P.App.addListener('backButton', ()=>{
+        if(closeTop()) return;
+        if(q.value){ q.value=''; render(); showKeyboard(); return; }
+        P.App.minimizeApp().catch(()=>{});
+      });
+      P.App.addListener('resume', ()=>{ if(!anyOverlay()) showKeyboard(); });
+    }catch(e){}
+  }
   connect();
 })();
 </script>

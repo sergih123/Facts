@@ -6,7 +6,7 @@ Status: ✅ built in the web version · 🔜 planned for native
 
 ## 1. Launch and search
 - ✅ The app opens straight into search, with the search box focused.
-- 🔜 Native: the keyboard opens automatically on launch, which a web page can't force.
+- ✅ Android: the keyboard opens automatically on launch and when you come back to the app.
 - ✅ Results update on every keystroke. The local index loads before any network call.
 - ✅ Search covers the title, notes, source/URL, keywords, the description Claude wrote, and the text Claude read from the image.
 - ✅ Ranking: field weights are title > keywords/notes > source > description > image text. A match at the start of a word scores higher.
@@ -51,13 +51,17 @@ Status: ✅ built in the web version · 🔜 planned for native
 - ✅ Local-first: IndexedDB on the device holds metadata and image blobs, so the app opens instantly and works offline.
 - ✅ Cloud: each user's private store (`data/users/<id>/<itemId>`) plus uploaded images and thumbnails. Changes and deletions sync between devices.
 - ✅ Sync status shown: "synced", "syncing N…" or "saved on this device".
-- 🔜 Export/import a backup (needed to move data from the web version into the native app).
+- ✅ Backup: menu (⋮) → Export backup (JSON file with images; Android opens the share sheet, so you can save it to Drive/Files) and Import backup (merges, skips items already there). Works between the web and Android versions.
+- Android: data stays on the phone only (no cloud sync yet). Claude indexing isn't available in the Android app yet.
 
-## 6. Testing only (remove before production)
-- ✅ Four example charts with made-up numbers (marked SAMPLE DATA) and one example link, added automatically on first open. Flagged `example: true` in code and data.
+## 6. Testing only (web version)
+- ✅ Four example charts with made-up numbers (marked SAMPLE DATA) and one example link, added on first open of the web version only (never in the Android app). Flagged `example: true`.
 
-## 7. Native Android plan
-- Wrap the same web code with Capacitor, so every feature above carries over without rewriting.
-- Replace the claude.ai storage, file upload and Claude calls with a native or own backend: SQLite or IndexedDB locally, plus optional cloud sync.
-- Build the APK with GitHub Actions.
-- Rewrite screens in Flutter or Kotlin only if something still feels slow.
+## 7. Android app
+- ✅ Capacitor wrapper around the same `index.html`, built on GitHub Actions and published as a GitHub release for tags `vX.Y.Z`.
+- ✅ Updates keep your data: fixed app id `io.github.sergih123.facts`, one release key (`signing/`, password in a repo secret), versionCode derived from the version.
+- ✅ Back button closes the top screen, then clears the search, then minimizes the app (so it reopens instantly).
+- ✅ Own icon, dark launch screen, edge-to-edge safe areas.
+- 🔜 On-device text reading (ML Kit) and Claude/API keywords.
+- 🔜 Share target ("Share → Facts").
+- 🔜 Cloud sync for the Android app.

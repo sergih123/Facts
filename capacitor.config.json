@@ -1,0 +1,13 @@
+{
+  "appId": "io.github.sergih123.facts",
+  "appName": "Facts",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#0e1013"
+  },
+  "plugins": {
+    "Keyboard": {
+      "resizeOnFullScreen": true
+    }
+  }
+}
