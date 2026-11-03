@@ -1,14 +1,19 @@
 name: Android release
 
-# Push a tag like v1.0.0 to build a signed APK and publish it as a GitHub release.
-# "Run workflow" (manual) builds a test APK you can download from the run page.
+# Every push to main builds the app.
+# When the "version" in package.json has no GitHub release yet, the build is
+# published as release vX.Y.Z with the signed APK attached.
 on:
   push:
-    tags: ['v*', 'ci-test-*']
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -27,20 +32,24 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
-      - name: Version from tag
+      - name: Version
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${GITHUB_REF_NAME}"
-          if [[ "$TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-            # v1.2.3 -> 10203. Always grows with the version, so updates install over the old app.
-            CODE=$(( BASH_REMATCH[1]*10000 + BASH_REMATCH[2]*100 + BASH_REMATCH[3] ))
-            NAME="${TAG#v}"
-            echo "FACTS_RELEASE=1" >> "$GITHUB_ENV"
-          else
-            CODE=1; NAME="test-${GITHUB_RUN_NUMBER}"
+          NAME=$(node -p "require('./package.json').version")
+          if [[ ! "$NAME" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "::error::package.json version must look like 1.2.3 (got $NAME)"; exit 1
           fi
-          echo "FACTS_VERSION_CODE=$CODE" >> "$GITHUB_ENV"
+          # 1.2.3 -> 10203. Always grows with the version, so updates install over the old app.
+          CODE=$(( BASH_REMATCH[1]*10000 + BASH_REMATCH[2]*100 + BASH_REMATCH[3] ))
           echo "FACTS_VERSION_NAME=$NAME" >> "$GITHUB_ENV"
-          echo "Building $NAME (versionCode $CODE)"
+          echo "FACTS_VERSION_CODE=$CODE" >> "$GITHUB_ENV"
+          if gh release view "v$NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release v$NAME already exists: build check only."
+          else
+            echo "FACTS_RELEASE=1" >> "$GITHUB_ENV"
+            echo "New version v$NAME will be released."
+          fi
 
       - name: Install
         run: npm install --no-audit --no-fund
@@ -48,7 +57,7 @@ jobs:
       - name: Prepare Android project
         run: npm run android
 
-      - name: Build signed APK
+      - name: Build APK
         env:
           FACTS_KEYSTORE_PASSWORD: ${{ secrets.FACTS_KEYSTORE_PASSWORD }}
         run: |
@@ -58,7 +67,7 @@ jobs:
             # No key yet: build a debug APK only to check that everything compiles. Never released.
             ./gradlew assembleDebug --no-daemon --stacktrace
             cp app/build/outputs/apk/debug/app-debug.apk "../Facts-TEST-ONLY-${FACTS_VERSION_NAME}.apk"
-            echo "::error::Missing repository secret FACTS_KEYSTORE_PASSWORD (Settings > Secrets and variables > Actions). Built a test-only debug APK."
+            echo "::error::Missing repository secret FACTS_KEYSTORE_PASSWORD (Settings > Secrets and variables > Actions). Built a test-only debug APK; nothing was released."
             exit 1
           fi
           ./gradlew assembleRelease --no-daemon --stacktrace
@@ -69,13 +78,16 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          if-no-files-found: ignore
           name: Facts-${{ env.FACTS_VERSION_NAME }}
           path: Facts-*.apk
+          if-no-files-found: ignore
 
       - name: Publish release
         if: env.FACTS_RELEASE == '1'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.FACTS_VERSION_NAME }}
+          target_commitish: ${{ github.sha }}
+          name: Facts ${{ env.FACTS_VERSION_NAME }}
           files: Facts-*.apk
           generate_release_notes: true
